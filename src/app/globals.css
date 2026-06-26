@@ -1,11 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  /* Editorial Off-White Base Theme */
   --background: #F8F9FA;
   --foreground: #1B263B;
-
-  /* Brand Constants */
   --navy: #1B263B;
   --storm-gray: #778DA9;
   --gold: #E9C46A;

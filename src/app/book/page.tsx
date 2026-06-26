@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Navbar from "../components/Navbar";
+import SideBar from "../components/SideBar";
 
 interface ChatBookRecommendation {
   title: string;
@@ -20,8 +22,14 @@ interface ChatBookRecommendation {
 }
 
 export default function Book() {
-  const [bookRecommendations, setBookRecommendations] = useState<ChatBookRecommendation[]>([]);
+  const [bookRecommendations, setBookRecommendations] = useState<
+    ChatBookRecommendation[]
+  >([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [genre, setGenre] = useState("All");
+  const [sortBy, setSortBy] = useState("recommended");
+  const [onlyDeals, setOnlyDeals] = useState(false);
 
   useEffect(() => {
     const fetchBookRecommendations = async () => {
@@ -50,117 +58,206 @@ export default function Book() {
     fetchBookRecommendations();
   }, []);
 
-   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    e.currentTarget.src = "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500&auto=format&fit=crop&q=60";
+  const { genres, totalDeals } = useMemo(() => {
+    const uniqueGenres = Array.from(
+      new Set(bookRecommendations.map((book) => book.genre).filter(Boolean)),
+    );
+    const dealCount = bookRecommendations.filter(
+      (book) => book.discount > 0,
+    ).length;
+
+    return {
+      genres: ["All", ...uniqueGenres],
+      totalDeals: dealCount,
+    };
+  }, [bookRecommendations]);
+
+  const filteredBooks = useMemo(() => {
+    const matchedBooks = bookRecommendations.filter((book) => {
+      const safeTags = book.tags ?? [];
+      const haystack =
+        `${book.title} ${book.author} ${book.description} ${safeTags.join(" ")} ${book.genre}`.toLowerCase();
+      const matchesQuery = haystack.includes(query.trim().toLowerCase());
+      const matchesGenre = genre === "All" || book.genre === genre;
+      const matchesDeal = !onlyDeals || book.discount > 0;
+
+      return matchesQuery && matchesGenre && matchesDeal;
+    });
+
+    return [...matchedBooks].sort((a, b) => {
+      if (sortBy === "rating") {
+        return b.rating - a.rating;
+      }
+      if (sortBy === "price") {
+        const effectivePriceA = a.discount > 0 ? a.discountPrice : a.price;
+        const effectivePriceB = b.discount > 0 ? b.discountPrice : b.price;
+        return effectivePriceA - effectivePriceB;
+      }
+      if (sortBy === "discount") {
+        return b.discount - a.discount;
+      }
+      return b.rating - a.rating;
+    });
+  }, [bookRecommendations, genre, onlyDeals, query, sortBy]);
+
+  const handleImageError = (
+    e: React.SyntheticEvent<HTMLImageElement, Event>,
+  ) => {
+    e.currentTarget.src =
+      "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500&auto=format&fit=crop&q=60";
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-12 text-center">
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">
-            Your Book Recommendations
-          </h1>
-          <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 sm:mt-4">
-            Handpicked literary choices just for you.
-          </p>
-        </header>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Top Fixed/Sticky Navigation Bar */}
+      <Navbar />
 
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-          </div>
-        ) : bookRecommendations.length > 0 ? (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {bookRecommendations.map((book, index) => (
-              <div
-                key={index}
-                className="flex flex-col bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 overflow-hidden transition-all duration-300 transform hover:-translate-y-1"
-              >
-                {/* Book Cover Container */}
-                <div className="relative h-64 bg-gray-200 overflow-hidden group">
-                  <img
-                    src={book.image || "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500&auto=format&fit=crop&q=60"}
-                    alt={book.title}
-                    onError={handleImageError}
-                    className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <span className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-indigo-600 text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm">
-                    {book.genre}
-                  </span>
-                </div>
+      {/* Main Container Layout */}
+      <div className="mx-auto flex max-w-7xl flex-col lg:flex-row gap-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        {/* Left Control Sidebar (Sticky below navigation bar on desktop) */}
 
-                {/* Content */}
-                <div className="flex-1 p-6 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <h2 className="text-xl font-bold text-gray-900 line-clamp-1">
-                        {book.title}
-                      </h2>
-                      <div className="flex items-center text-amber-500 text-sm font-medium shrink-0">
-                        ★ <span className="ml-1 text-gray-700">{book.rating}</span>
+        <SideBar
+          query={query}
+          setQuery={setQuery}
+          genre={genre}
+          genres={genres}
+          setGenre={setGenre}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          onlyDeals={onlyDeals}
+          setOnlyDeals={setOnlyDeals}
+          bookRecommendations={bookRecommendations}
+          totalDeals={totalDeals}
+        />
+
+        {/* Right Main Grid Workspace */}
+        <main className="flex-1">
+          {loading ? (
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-96 animate-pulse rounded-[1.5rem] border border-storm/10 bg-white"
+                />
+              ))}
+            </div>
+          ) : filteredBooks.length > 0 ? (
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredBooks.map((book, index) => (
+                <article
+                  key={`${book.title}-${index}`}
+                  className="group flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-storm/20 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+                >
+                  {/* Book Banner */}
+                  <div className="relative h-48 shrink-0 overflow-hidden bg-background">
+                    <img
+                      src={
+                        book.image ||
+                        "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500&auto=format&fit=crop&q=60"
+                      }
+                      alt={book.title}
+                      onError={handleImageError}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute left-3 top-3 rounded-full bg-white/95 border border-storm/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-navy shadow-sm">
+                      {book.genre}
+                    </div>
+                    <div className="absolute right-3 top-3 rounded-full bg-gold px-2.5 py-0.5 text-xs font-semibold text-navy shadow-sm">
+                      ★ {book.rating}
+                    </div>
+                  </div>
+
+                  {/* Card Content Segment */}
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h2 className="text-lg font-semibold text-navy tracking-tight line-clamp-1">
+                          {book.title}
+                        </h2>
+                        <p className="text-xs text-storm mt-0.5">
+                          By {book.author}
+                        </p>
                       </div>
+                      {book.discount > 0 && (
+                        <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-bold text-navy border border-gold/30 shrink-0">
+                          -{book.discount}%
+                        </span>
+                      )}
                     </div>
 
-                    <p className="text-sm font-medium text-indigo-600">By {book.author}</p>
-                    <p className="text-sm text-gray-500 line-clamp-3">{book.description}</p>
+                    <p className="mt-3 text-xs leading-relaxed text-navy/80 line-clamp-3">
+                      {book.description}
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-storm italic border-l border-gold/60 pl-2 line-clamp-2">
+                      {book.summary}
+                    </p>
 
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-1.5 pt-2">
-                      {book.tags.slice(0, 3).map((tag, tIdx) => (
-                        <span key={tIdx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {(book.tags ?? []).slice(0, 3).map((tag, tagIndex) => (
+                        <span
+                          key={`${tag}-${tagIndex}`}
+                          className="rounded-md bg-background border border-storm/10 px-2 py-0.5 text-[10px] text-storm"
+                        >
                           #{tag}
                         </span>
                       ))}
                     </div>
-                  </div>
 
-                  {/* Pricing and Action */}
-                  <div className="mt-6 pt-4 border-t border-gray-100">
-                    <div className="flex items-baseline justify-between mb-4">
-                      <div>
-                        {book.discount > 0 ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl font-bold text-gray-900">${book.discountPrice}</span>
-                            <span className="text-sm text-gray-400 line-through">${book.price}</span>
-                            <span className="text-xs font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
-                              {book.discount}% OFF
+                    {/* Lower Checkout Row */}
+                    <div className="mt-5 border-t border-storm/10 pt-3 mt-auto">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          {book.discount > 0 ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-base font-bold text-navy">
+                                ${book.discountPrice}
+                              </span>
+                              <span className="text-xs text-storm line-through">
+                                ${book.price}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-base font-bold text-navy">
+                              ${book.price}
                             </span>
-                          </div>
-                        ) : (
-                          <span className="text-2xl font-bold text-gray-900">${book.price}</span>
-                        )}
+                          )}
+                        </div>
+                        <div className="flex gap-1.5">
+                          <a
+                            href={book.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg border border-storm/30 px-3 py-1.5 text-xs font-medium text-navy transition hover:bg-background"
+                          >
+                            View
+                          </a>
+                          <a
+                            href={book.discountLink || book.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg bg-navy px-3 py-1.5 text-xs font-medium text-white transition hover:bg-storm"
+                          >
+                            Buy
+                          </a>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <a
-                        href={book.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                      >
-                        View Book
-                      </a>
-                      <a
-                        href={book.discountLink || book.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-colors"
-                      >
-                        Buy Deal
-                      </a>
-                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <p className="text-lg text-gray-500">No book recommendations available right now.</p>
-          </div>
-        )}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[1.5rem] border border-dashed border-storm/30 bg-white p-12 text-center">
+              <p className="text-base font-semibold text-navy">
+                No books fit this criteria
+              </p>
+              <p className="mt-1 text-xs text-storm">
+                Try updating your filters inside the sidebar layout
+                configuration.
+              </p>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

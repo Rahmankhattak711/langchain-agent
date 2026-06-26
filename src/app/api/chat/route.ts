@@ -233,65 +233,6 @@ Return ONLY this JSON array:
 
 `;
 
-const fallbackRecommendations: ChatBookRecommendation[] = [
-  {
-    title: "Atomic Habits",
-    author: "James Clear",
-    description:
-      "A practical guide to building better habits and breaking bad ones.",
-    link: "https://www.amazon.com/Atomic-Habits-Proven-Build-Break/dp/0735211299",
-    image: "",
-    rating: 4.9,
-    genre: "Self Improvement",
-    tags: ["habits", "productivity", "psychology"],
-    summary: "A simple framework for making meaningful changes that stick.",
-    review: "Highly actionable and easy to apply in daily life.",
-    price: 18,
-    discount: 0,
-    discountPrice: 18,
-    discountLink: "",
-    discountDescription: "",
-  },
-  {
-    title: "Deep Work",
-    author: "Cal Newport",
-    description:
-      "A compelling argument for focused work in a distracted world.",
-    link: "https://www.amazon.com/Deep-Work-Focused-Success-Distracted/dp/1455586692",
-    image: "",
-    rating: 4.7,
-    genre: "Productivity",
-    tags: ["focus", "career", "discipline"],
-    summary:
-      "Shows why sustained concentration is a superpower in modern work.",
-    review: "A great read for anyone who wants better attention and output.",
-    price: 16,
-    discount: 0,
-    discountPrice: 16,
-    discountLink: "",
-    discountDescription: "",
-  },
-  {
-    title: "The Pragmatic Programmer",
-    author: "Andrew Hunt and David Thomas",
-    description: "A timeless guide to building software that lasts.",
-    link: "https://www.amazon.com/Pragmatic-Programmer-journey-mastery-Anniversary/dp/0135957052",
-    image: "",
-    rating: 4.8,
-    genre: "Programming",
-    tags: ["software engineering", "development", "career"],
-    summary:
-      "Covers practical habits and techniques every developer should know.",
-    review:
-      "Still relevant years after publication because of its core principles.",
-    price: 39,
-    discount: 0,
-    discountPrice: 39,
-    discountLink: "",
-    discountDescription: "",
-  },
-];
-
 const createChatModel = () =>
   new ChatOpenRouter({
     model: "cohere/north-mini-code:free",
@@ -322,7 +263,7 @@ export const POST = async (req: Request) => {
 
     if (!apiKey) {
       return NextResponse.json({
-        bookRecommendations: fallbackRecommendations,
+        bookRecommendations: [],
         source: "fallback",
       });
     }
@@ -344,14 +285,14 @@ export const POST = async (req: Request) => {
     const bookRecommendations =
       parsedRecommendations.length > 0
         ? parsedRecommendations
-        : fallbackRecommendations;
+        : "No book recommendations found.";
 
     return NextResponse.json({ bookRecommendations, source: "ai" });
   } catch (error) {
     console.error("Error generating book recommendations:", error);
 
     return NextResponse.json({
-      bookRecommendations: fallbackRecommendations,
+      bookRecommendations: [],
       source: "fallback",
     });
   }
